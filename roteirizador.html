@@ -1264,6 +1264,7 @@ function gerarRotas(){
     };
   }).sort(function(a,b){return b.items.length-a.items.length;});
   rendRotas();
+  swPanel('rotas');
   toast('✅ '+rotasGeradas.length+' rotas geradas!');
 }
 
@@ -1813,7 +1814,7 @@ document.addEventListener('DOMContentLoaded', function(){
   on('btn-limparf','click',function(){['d-nome','d-doc','d-cidade','d-bairro','d-cep'].forEach(function(id){safeVal(id,'');});safeVal('d-peso','0');safeVal('d-vol','1');});
   on('btn-csv','click',expCSV);
   on('btn-limpar-tudo','click',function(){if(confirm('Limpar tudo?')){S.entregas=[];rendLista();}});
-  on('btn-ir-rotas','click',function(){swPanel('rotas');});
+  on('btn-ir-rotas','click',function(){if(S.entregas.length&&!rotasGeradas.length)gerarRotas();else swPanel('rotas');});
   on('btn-salvar-ent','click',async function(){
     if(!DB){toast('Firebase offline','warn');return;}
     try{for(var i=0;i<S.entregas.length;i++){await DB.collection('entregas').doc(String(S.entregas[i].id)).set(S.entregas[i]);}toast('✅ Salvo!');}
@@ -2044,7 +2045,13 @@ function imprimirEtiquetas(){
   var fontSize=formato==='termo-80'?'8pt':'7pt';
 
   var w=window.open('','_blank');
-  if(!w){toast('Pop-up bloqueado — libere o pop-up','warn');return;}
+  if(!w){
+    toast('Pop-up bloqueado! Habilite pop-ups para este site','warn');
+    // Try alternative: create in current page
+    var div=document.getElementById('etq-preview');
+    if(div){div.style.display='block';div.innerHTML='<p style="color:var(--danger);font-size:.82rem">⚠️ Pop-up bloqueado. Habilite pop-ups no navegador e tente novamente.</p>';}
+    return;
+  }
 
   // Build QR payload for each entrega
   // Contains: manifesto, nf/doc, nome, cidade, id — usado por:
@@ -2104,7 +2111,7 @@ function imprimirEtiquetas(){
   }))+';');
   lines.push('window.onload=function(){');
   lines.push('payloads.forEach(function(p,i){');
-  lines.push('  try{new QRCode(document.getElementById("qr"+i),{text:p,width:'+qrSize+',height:'+qrSize+',correctLevel:QRCode.CorrectLevel.M});}catch(er){}');
+  lines.push('  try{if(typeof QRCode!=="undefined"){new QRCode(document.getElementById("qr"+i),{text:p,width:'+qrSize+',height:'+qrSize+',correctLevel:QRCode.CorrectLevel.M});}}catch(er){document.getElementById("qr"+i).textContent=JSON.parse(p).nf||p.substring(0,20);}');
   lines.push('});');
   lines.push('setTimeout(function(){window.print();},1200);');
   lines.push('};');
